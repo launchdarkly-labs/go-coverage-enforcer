@@ -20,7 +20,7 @@ func withTempDir(action func(dirPath string)) {
 }
 
 func TestInferPackagePathFromGoMod(t *testing.T) {
-	assert.Equal(t, "github.com/eli-darkly/go-coverage-enforcer", InferPackagePath())
+	assert.Equal(t, "github.com/launchdarkly-labs/go-coverage-enforcer", InferPackagePath())
 }
 
 func TestInferPackagePathFromGitURLWithSSH(t *testing.T) {

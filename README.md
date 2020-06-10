@@ -7,7 +7,7 @@ Unlike other tools for a similar purpose, `go-coverage-enforcer` does not genera
 ## Usage
 
 ```shell
-go install github.com/eli-darkly/go-coverage-enforcer
+go install github.com/launchdarkly-labs/go-coverage-enforcer
 
 go test . -coverprofile coverage.out
 go-coverage-enforcer coverage.out

@@ -1,4 +1,4 @@
-module github.com/eli-darkly/go-coverage-enforcer
+module github.com/launchdarkly-labs/go-coverage-enforcer
 
 go 1.13
 
