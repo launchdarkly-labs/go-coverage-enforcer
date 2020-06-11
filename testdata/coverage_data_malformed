@@ -1,0 +1,10 @@
+mode: set
+base-package/first:1.1,2.1 2 0
+base-package/otherpackage/first:2.1,2.10 1 0
+base-package/first:4.4,5.2 1 0
+base-package/second:x
+base-package/third:1.1,2.1 2 0
+base-package/third:3.1,4.1 2 0
+base-package/second:1.1,5.1 5 0
+base-package/third:3.1,4.1 2 1
+base-package/third:4.1,5.1 2 0

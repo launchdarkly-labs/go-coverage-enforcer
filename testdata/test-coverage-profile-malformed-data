@@ -1,6 +1,0 @@
-mode: set
-github.com/launchdarkly/example/file1:20.2,30.12 1 0
-github.com/launchdarkly/example/package1/file2:25.37,26.15 1 0
-github.com/launchdarkly/example/package1/file3:x
-github.com/launchdarkly/example/file1:10.42,10.52 1 0
-

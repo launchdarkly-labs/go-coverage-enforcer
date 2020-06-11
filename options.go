@@ -15,6 +15,8 @@ type EnforcerOptions struct {
 	PackagePath      string
 	SkipFilesPattern *regexp.Regexp
 	SkipCodePattern  *regexp.Regexp
+	ShowPackageStats bool
+	ShowFileStats    bool
 	ShowCode         bool
 	OutputFilePath   string
 }
@@ -30,6 +32,8 @@ func ReadCommandLineOptions(argsIn []string, errWriter io.Writer) (EnforcerOptio
 	flags := flag.NewFlagSet(usageMessage, flag.ContinueOnError)
 	flags.SetOutput(errWriter)
 	flags.StringVar(&opts.PackagePath, "package", "", "base import path of this package")
+	flags.BoolVar(&opts.ShowPackageStats, "packagestats", false, "show package-level statistics after filtering")
+	flags.BoolVar(&opts.ShowFileStats, "filestats", false, "show file-level statistics after filtering")
 	flags.BoolVar(&opts.ShowCode, "showcode", false, "display source code of uncovered blocks")
 	flags.StringVar(&skipFilesPattern, "skipfiles", "", "regex pattern for file paths to be ignored")
 	flags.StringVar(&skipCodePattern, "skipcode", "", "regex pattern for ignoring a code block")

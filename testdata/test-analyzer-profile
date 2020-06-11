@@ -1,8 +1,0 @@
-mode: set
-package-path/file1:1.1,2.1 2 0
-package-path/file1:3.1,4.1 2 0
-package-path/file2-skip:1.1,5.1 5 0
-package-path/file3:1.1,2.1 2 0
-package-path/file3:3.1,4.1 2 0
-package-path/file3:3.1,4.1 2 1
-package-path/file3:4.1,5.1 2 0

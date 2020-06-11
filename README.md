@@ -25,6 +25,10 @@ Specifies the import path of the current package that is being tested.
 
 If you don't specify this, `go-coverage-enforcer` will try to determine the package by looking for a `go.mod` file in the current directory. As a fallback, it will check whether the current directory is a Git checkout and will try to determine the import path from the Git URL.
 
+**`-packagestats`**, **`-filestats`**
+
+Causes the output to include coverage statistics per package and/or per file. A number like "140/200" means that `go test` counted 200 statements in that package or file (not counting any files or code ranges that were excluded with `-skipfiles` or `-skipcode`), and that 140 of those statements were covered.
+
 **`-showcode`**
 
 Causes the output to include the source code of each uncovered block.

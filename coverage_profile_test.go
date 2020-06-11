@@ -11,33 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testCoverageProfileFileName = "test-coverage-profile"
-
-var expectedParsedCoverageProfile = CoverageProfile{ // the parsed content of the file above
-	CoverageMode: "set",
-	Blocks: []CodeBlockCoverage{ // the parsed content of the file above
-		{CodeRange{"github.com/launchdarkly/example/file1", 20, 2, 30, 12}, 1, 0},
-		{CodeRange{"github.com/launchdarkly/example/package1/file2", 25, 37, 26, 15}, 1, 0},
-		{CodeRange{"github.com/launchdarkly/example/package1/file3", 97, 47, 99, 2}, 1, 0},
-		{CodeRange{"github.com/launchdarkly/example/package1/file3", 97, 47, 99, 2}, 1, 0},
-		{CodeRange{"github.com/launchdarkly/example/package1/file2", 35, 12, 36, 16}, 1, 0},
-		{CodeRange{"github.com/launchdarkly/example/package1/file2", 35, 12, 36, 16}, 1, 1},
-		{CodeRange{"github.com/launchdarkly/example/package1/file3", 97, 47, 99, 2}, 1, 1},
-		{CodeRange{"github.com/launchdarkly/example/file1", 10, 42, 10, 52}, 1, 0},
-	},
-}
-
 func TestReadCoverageProfile(t *testing.T) {
 	t.Run("parses file with expected values", func(t *testing.T) {
-		withValidTestProfile(testCoverageProfileFileName, func(cp *CoverageProfile) {
+		withValidTestProfile(testDataMainFile, func(cp *CoverageProfile) {
 			assert.Equal(t, "set", cp.CoverageMode)
 			assert.Equal(t, expectedParsedCoverageProfile.Blocks, cp.Blocks)
-		})
-	})
-
-	t.Run("skips blank lines", func(t *testing.T) {
-		withValidTestProfile("test-coverage-profile-with-blank-line", func(cp *CoverageProfile) {
-			assert.Equal(t, expectedParsedCoverageProfile, *cp)
 		})
 	})
 
@@ -48,47 +26,53 @@ func TestReadCoverageProfile(t *testing.T) {
 	})
 
 	t.Run("fails for malformed data", func(t *testing.T) {
-		withTestProfile("test-coverage-profile-malformed-data", func(cp *CoverageProfile, err error) {
+		withTestProfile("coverage_data_malformed", func(cp *CoverageProfile, err error) {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "Invalid profile data format")
 		})
 	})
 }
 
-func TestCoverageProfileMethods(t *testing.T) {
-	t.Run("GetUniqueBlocks", func(t *testing.T) {
-		withValidTestProfile(testCoverageProfileFileName, func(cp *CoverageProfile) {
-			blocks := cp.GetUniqueBlocks()
-			expected := []CodeBlockCoverage{
-				// the blocks are sorted in order of file path and starting line, and duplicates are filtered out
-				expectedParsedCoverageProfile.Blocks[7],
-				expectedParsedCoverageProfile.Blocks[0],
-				expectedParsedCoverageProfile.Blocks[1],
-				expectedParsedCoverageProfile.Blocks[5],
-				expectedParsedCoverageProfile.Blocks[6],
+func TestCoverageProfileGetUniqueBlocks(t *testing.T) {
+	withValidTestProfile(testDataMainFile, func(cp *CoverageProfile) {
+		blocks := cp.GetUniqueBlocks()
+		expected := []CodeBlockCoverage{
+			// the blocks are sorted in order of package path, file path, and starting line, and
+			// duplicates are filtered out
+			expectedParsedCoverageProfile.Blocks[1], // first 1.1,2.1
+			expectedParsedCoverageProfile.Blocks[0], // first 4.4,5.2
+			expectedParsedCoverageProfile.Blocks[3], // second 1.1,5.1
+			expectedParsedCoverageProfile.Blocks[4], // third 1.1,2.1
+			expectedParsedCoverageProfile.Blocks[6], // third 3.1,4.1
+			expectedParsedCoverageProfile.Blocks[7], // third 4.1,5.1
+			expectedParsedCoverageProfile.Blocks[2], // otherpackage/first 2.1,2.10
+		}
+		assert.Equal(t, expected, blocks)
+	})
+}
+
+func TestCoverageProfileWriteTo(t *testing.T) {
+	t.Run("output matches input", func(t *testing.T) {
+		withValidTestProfile(testDataMainFile, func(cp *CoverageProfile) {
+			buf := new(bytes.Buffer)
+			err := cp.WriteTo(buf)
+			require.NoError(t, err)
+
+			trimmedLines := func(data []byte) []string {
+				return strings.Split(strings.TrimSpace(string(data)), "\n")
 			}
-			assert.Equal(t, expected, blocks)
+
+			expectedData, _ := ioutil.ReadFile(testDataMainFile)
+
+			assert.Equal(t, trimmedLines(expectedData), trimmedLines(buf.Bytes()))
 		})
 	})
 
-	t.Run("WriteTo", func(t *testing.T) {
-		t.Run("output matches input", func(t *testing.T) {
-			withValidTestProfile(testCoverageProfileFileName, func(cp *CoverageProfile) {
-				buf := new(bytes.Buffer)
-				err := cp.WriteTo(buf)
-				require.NoError(t, err)
-
-				expectedData, _ := ioutil.ReadFile(testCoverageProfileFileName)
-				assert.Equal(t, strings.Split(string(expectedData), "\n"), strings.Split(buf.String(), "\n"))
-			})
-		})
-
-		t.Run("fails for writer error", func(t *testing.T) {
-			withValidTestProfile(testCoverageProfileFileName, func(cp *CoverageProfile) {
-				w := &mockReaderWriterThatReturnsError{err: errors.New("sorry")}
-				err := cp.WriteTo(w)
-				require.Equal(t, w.err, err)
-			})
+	t.Run("fails for writer error", func(t *testing.T) {
+		withValidTestProfile(testDataMainFile, func(cp *CoverageProfile) {
+			w := &mockReaderWriterThatReturnsError{err: errors.New("sorry")}
+			err := cp.WriteTo(w)
+			require.Equal(t, w.err, err)
 		})
 	})
 }

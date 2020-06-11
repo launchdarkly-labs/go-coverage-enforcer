@@ -34,13 +34,8 @@ func main() {
 	result, err := AnalyzeCoverage(profile, options)
 	exitIfError(err)
 
-	pass := false
-	if len(result.UncoveredBlocks) == 0 {
-		fmt.Println("Coverage scan passes!")
-		pass = true
-	} else {
-		displayReport(result)
-	}
+	report := NewSummaryReport(result, options)
+	report.Output(os.Stdout, options)
 
 	if options.OutputFilePath != "" {
 		f1, err := os.Create(options.OutputFilePath)
@@ -50,7 +45,7 @@ func main() {
 		fmt.Println("Filtered profile written to", options.OutputFilePath)
 	}
 
-	if !pass {
+	if !report.Pass {
 		os.Exit(1)
 	}
 }
@@ -59,20 +54,5 @@ func exitIfError(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
-	}
-}
-
-func displayReport(result AnalyzerResult) {
-	fmt.Println("Uncovered blocks detected:")
-	for _, b := range result.UncoveredBlocks {
-		if len(b.Text) > 0 {
-			fmt.Println()
-		}
-		fmt.Printf("%s %d-%d\n", b.CodeRange.FilePath, b.CodeRange.StartLine, b.CodeRange.EndLine)
-		if len(b.Text) > 0 {
-			for i, line := range b.Text {
-				fmt.Printf("%d>\t%s\n", b.CodeRange.StartLine+i, line)
-			}
-		}
 	}
 }

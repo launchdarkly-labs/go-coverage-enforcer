@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -26,6 +27,22 @@ func forInvalidCommandLine(t *testing.T, args string, action func(errorOutput st
 }
 
 func TestReadCommandLineOptions(t *testing.T) {
+	validateBool := func(optName string, getter func(EnforcerOptions) bool) func(t *testing.T) {
+		return func(t *testing.T) {
+			forValidCommandLine(t, fmt.Sprintf("cmd -%s param1", optName),
+				func(opts EnforcerOptions) { assert.True(t, getter(opts)) })
+
+			forValidCommandLine(t, fmt.Sprintf("cmd -%s=true param1", optName),
+				func(opts EnforcerOptions) { assert.True(t, getter(opts)) })
+
+			forValidCommandLine(t, fmt.Sprintf("cmd -%s=false param1", optName),
+				func(opts EnforcerOptions) { assert.False(t, getter(opts)) })
+
+			forInvalidCommandLine(t, fmt.Sprintf("cmd -%s=3 param1", optName),
+				func(errorOutput string) { assert.Contains(t, errorOutput, "invalid boolean value") })
+		}
+	}
+
 	t.Run("valid defaults", func(t *testing.T) {
 		forValidCommandLine(t, "enforcer param1", func(opts EnforcerOptions) {
 			assert.Equal(t, "param1", opts.InputFilePath)
@@ -37,11 +54,26 @@ func TestReadCommandLineOptions(t *testing.T) {
 		})
 	})
 
+	t.Run("-filestats", validateBool("filestats",
+		func(opts EnforcerOptions) bool { return opts.ShowFileStats }))
+
+	t.Run("-outprofile", func(t *testing.T) {
+		forValidCommandLine(t, "enforcer -outprofile newfile param1", func(opts EnforcerOptions) {
+			assert.Equal(t, "newfile", opts.OutputFilePath)
+		})
+	})
+
 	t.Run("-packagepath", func(t *testing.T) {
 		forValidCommandLine(t, "enforcer -package example.com/my/path param1", func(opts EnforcerOptions) {
 			assert.Equal(t, "example.com/my/path", opts.PackagePath)
 		})
 	})
+
+	t.Run("-packagestats", validateBool("packagestats",
+		func(opts EnforcerOptions) bool { return opts.ShowPackageStats }))
+
+	t.Run("-showcode", validateBool("showcode",
+		func(opts EnforcerOptions) bool { return opts.ShowCode }))
 
 	t.Run("-skipfiles", func(t *testing.T) {
 		forValidCommandLine(t, "enforcer -skipfiles skip.*go param1", func(opts EnforcerOptions) {
@@ -60,30 +92,6 @@ func TestReadCommandLineOptions(t *testing.T) {
 
 		forInvalidCommandLine(t, "enforcer -skipcode ??? param1", func(errorOutput string) {
 			assert.Contains(t, errorOutput, "Not a valid regular expression")
-		})
-	})
-
-	t.Run("-showcode", func(t *testing.T) {
-		forValidCommandLine(t, "enforcer -showcode param1", func(opts EnforcerOptions) {
-			assert.True(t, opts.ShowCode)
-		})
-
-		forValidCommandLine(t, "enforcer -showcode=true param1", func(opts EnforcerOptions) {
-			assert.True(t, opts.ShowCode)
-		})
-
-		forValidCommandLine(t, "enforcer -showcode=false param1", func(opts EnforcerOptions) {
-			assert.False(t, opts.ShowCode)
-		})
-
-		forInvalidCommandLine(t, "enforcer -showcode=3 param1", func(errorOutput string) {
-			assert.Contains(t, errorOutput, "invalid boolean value")
-		})
-	})
-
-	t.Run("-outprofile", func(t *testing.T) {
-		forValidCommandLine(t, "enforcer -outprofile newfile param1", func(opts EnforcerOptions) {
-			assert.Equal(t, "newfile", opts.OutputFilePath)
 		})
 	})
 

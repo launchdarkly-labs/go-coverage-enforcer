@@ -1,0 +1,3 @@
+mode: set
+base-package/first:1.1,2.1 2 1
+base-package/second:1.1,5.1 4 1

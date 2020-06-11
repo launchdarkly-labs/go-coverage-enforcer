@@ -8,52 +8,52 @@ import (
 	"strings"
 )
 
-// AnalyzerResult is the result returned by AnalyzeCoverage.
-type AnalyzerResult struct {
-	// UncoveredBlocks is a list of code ranges that had no coverage. The list is sorted in
-	// ascending order of file path and line number. It does not include any locations that are
-	// in SkippedBlocks or SkippedFilePaths.
-	UncoveredBlocks []UncoveredBlock
-
-	// SkippedFilePaths is a list of file paths that were skipped due to the "-skipfiles" option.
-	// These are in the same format as in the coverage profile, so they include the package's
-	// import path.
-	SkippedFilePaths []string
-
-	// SkippedBlocks is a list of code ranges that were skipped due to the "-skipcode" option.
-	SkippedBlocks []CodeBlockCoverage
-}
-
-// UncoveredBlock is a code range that had no coverage.
-type UncoveredBlock struct {
-	CodeRange
-
-	// Text is an optional excerpt of the source code file corresponding to the range's starting
-	// and ending line numbers. It is only provided if the "-showcode" option was used; otherwise
-	// it is nil.
-	Text []string
-}
-
 // AnalyzeCoverage applies the configured options to the profile data to produce report data.
 func AnalyzeCoverage(profile *CoverageProfile, opts EnforcerOptions) (AnalyzerResult, error) {
-	basePathPrefix := opts.PackagePath + "/"
-
 	blocks := profile.GetUniqueBlocks()
+
 	var result AnalyzerResult
+	var currentPackage *AnalyzerPackageResult
+	var currentFile *AnalyzerFileResult
 
 	for _, b := range blocks {
-		if !strings.HasPrefix(b.CodeRange.FilePath, basePathPrefix) {
+		packagePath, fileName := b.CodeRange.GetPackagePathAndFileName()
+
+		if !strings.HasPrefix(packagePath, opts.PackagePath) {
 			return result, fmt.Errorf(`coverage profile refers to source files that are not in the package "%s"; use -package option to specify correct package path`,
 				opts.PackagePath)
 		}
-		filePath := strings.TrimPrefix(b.CodeRange.FilePath, basePathPrefix)
+
+		var relativePackagePath, filePath string
+		if packagePath == opts.PackagePath {
+			filePath = fileName
+		} else {
+			relativePackagePath = strings.TrimPrefix(packagePath, opts.PackagePath+"/")
+			filePath = relativePackagePath + "/" + fileName
+		}
+
 		if opts.SkipFilesPattern != nil && opts.SkipFilesPattern.MatchString(filePath) {
 			result.SkippedBlocks = append(result.SkippedBlocks, b)
 			result.SkippedFilePaths = append(result.SkippedFilePaths, b.CodeRange.FilePath)
 			continue
 		}
 
+		if currentFile == nil || fileName != currentFile.FileName {
+			if currentFile != nil {
+				currentPackage.Files = append(currentPackage.Files, *currentFile)
+			}
+			currentFile = &AnalyzerFileResult{FileName: fileName}
+		}
+		if currentPackage == nil || relativePackagePath != currentPackage.RelativePath {
+			if currentPackage != nil {
+				result.Packages = append(result.Packages, *currentPackage)
+			}
+			currentPackage = &AnalyzerPackageResult{RelativePath: relativePackagePath}
+		}
+
 		if b.CoverageCount > 0 {
+			currentFile.TotalStatements += b.StatementCount
+			currentFile.CoveredStatements += b.StatementCount
 			continue
 		}
 
@@ -83,10 +83,17 @@ func AnalyzeCoverage(profile *CoverageProfile, opts EnforcerOptions) (AnalyzerRe
 			}
 		}
 
-		result.UncoveredBlocks = append(result.UncoveredBlocks, UncoveredBlock{
-			CodeRange: b.CodeRange,
-			Text:      showLines,
-		})
+		currentFile.TotalStatements += b.StatementCount
+
+		ub := UncoveredBlock{CodeRange: b.CodeRange, Text: showLines}
+		currentFile.UncoveredBlocks = append(currentFile.UncoveredBlocks, ub)
+	}
+
+	if currentFile != nil {
+		currentPackage.Files = append(currentPackage.Files, *currentFile)
+	}
+	if currentPackage != nil {
+		result.Packages = append(result.Packages, *currentPackage)
 	}
 
 	return result, nil
